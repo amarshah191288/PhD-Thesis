@@ -1,0 +1,163 @@
+% This is the code used for final analysis of all the home patient data
+%(total duration 6 hours only), excluding first 10 minutes and getting the
+%values that are mean, SDNN, SD1, SD2, SE for heart rate and respiratory
+%rate. Note after the mean all calculations use the R-R interval for HR and
+%breath-breath (BB) interval for respiratory rate. This was repeated for
+%each of the participants
+
+% Specify where the files live
+clear all
+close all
+clc
+Results = NaN(3,13);
+
+myfolder = "/MATLAB Drive/COPD-AcuPebble/RF01";
+if ~isfolder(myfolder)
+    errorMessage = sprintf('Error: The following folder does not exist:\n%s\nPlease specify a new folder.', myfolder);
+    uiwait(warndlg(errorMessage));
+    myFolder = uigetdir(); % Ask for a new one.
+    if myFolder == 0
+         % User clicked Cancel
+         return;
+    end
+
+end
+
+% Get a list of all files in the folder with the desired file name pattern.
+filePattern = fullfile(myfolder, '*.mat'); % Change to whatever pattern you need.
+theFiles = dir(filePattern);
+for k = 1 : length(theFiles)
+    baseFileName = theFiles(k).name;
+    fullFileName = fullfile(theFiles(k).folder, baseFileName);
+    fprintf(1, 'Now reading %s\n', fullFileName);
+data = load(fullFileName);
+
+
+
+
+%this part of the code is for HR
+
+HR = data.hr;
+HR = HR';
+
+HRall = HR(301:11100); % this is exactly 6 hours worth of data omitting the first 10mins
+medianHR = median(HRall); % this is the median HR 
+
+p=zeros(10800,1);
+
+%The following cleans data and gives percentage of missing data - if >/-15%
+%the whole night was deleted and not used
+
+for i = 1:10800
+ 
+
+    if  HRall(i,1) < 40 
+        HRall(i,1) = medianHR;
+        p(i,1) = 1;
+        
+    else
+        HRall(i,1) = HRall(i,1);
+        p(i,1)=0;
+       
+    end
+
+end
+
+PercHR=sum(p)/10800;
+meanHR = mean(HRall);
+
+% conversion of HR into R-R interval in milliseconds
+
+HRRR = 60000 ./ HRall;
+
+SDNNHR = std(HRRR); %this is SDNN of R-R interval for HR
+cSDNNHR = SDNNHR / exp(-meanHR/58.8); % this is cSDNN of R-R interval for HR
+
+%poincare plot indices SD1 and SD2 for HR
+
+XHR = HRRR(1:10800-1);
+YHR = HRRR(2:10800);
+
+SD1HR = std((XHR - YHR)./sqrt(2));
+SD2HR = std((XHR + YHR)./sqrt(2));
+
+%sample entropy calculation with m = 2 and r = 0.2
+
+SEHR = sampen(HRRR,2,0.2);
+SEHR = SEHR(2,1);
+
+
+% the next bit of code is for Respiratory Rate. 
+
+RR = data.rr;
+RR = RR';
+
+RRall = RR(301:11100); % this is exactly 6 hours worth of data omitting the first 10mins
+medianRR = median(RRall); % this is the median RR 
+
+q=zeros(10800,1);
+
+for i = 1:10800
+ 
+
+    if  RRall(i,1) < 8 
+        RRall(i,1) = medianRR;
+        q(i,1) = 1;
+        
+    else
+        RRall(i,1) = RRall(i,1);
+        q(i,1)=0;
+       
+    end
+
+end
+
+PercRR=sum(q)/10800;
+meanRR = mean(RRall); % the mean respiratory rate
+
+% conversion of RR into breath-to-breath (BB) interval in milliseconds
+
+RRBB = 60000 ./ RRall;
+SDBBRR = std(RRBB); %this is SDNN of B-B interval for RR
+
+%poincare plot indices SD1 and SD2 for HR
+
+XRR = RRBB(1:10800-1);
+YRR = RRBB(2:10800);
+
+SD1BB = std((XRR - YRR)./sqrt(2));
+SD2BB = std((XRR + YRR)./sqrt(2));
+
+
+%sample entropy calculation with m = 2 and r = 0.2
+
+SEBB = sampen(RRBB,2,0.2);
+SEBB = SEBB(2,1);
+
+
+% this is to combine all the data together and put into one excel
+% spreadsheet
+
+Results(k,1) = PercHR;
+Results(k,2) = PercRR;
+Results(k,3) = meanHR;
+Results(k,4) = SDNNHR;
+Results(k,5) = cSDNNHR;
+Results(k,6) = SD1HR;
+Results(k,7) = SD2HR;
+Results(k,8) = SEHR;
+Results(k,9) = meanRR;
+Results(k,10) = SDBBRR;
+Results(k,11) = SD1BB;
+Results(k,12) = SD2BB;
+Results(k,13) = SEBB;
+
+Table = array2table(Results);
+
+Table.Properties.VariableNames = ["% missing HR", "% missing RR", "mean Heart rate", "SDNN Heart rate ", "cSDNN heart rate",...
+    "SD1 heart rate", "SD2 heart rate","SE heart rate", "mean resp rate",...
+    "SDBB resp rate", "SD1 resp rate", "SD2 resp rate","SE resp rate"];
+
+end
+
+writetable(Table,"RF01.xls")
