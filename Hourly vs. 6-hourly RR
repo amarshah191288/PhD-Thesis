@@ -1,0 +1,355 @@
+%This code is for Respiratory rate and variability calculation hourly vs.
+%6-hourly calculation
+
+% Specify where the files live
+clear all
+close all
+clc
+Results = NaN(1,48);
+
+myfolder = "/MATLAB Drive/COPD-AcuPebble/RF01";
+if ~isfolder(myfolder)
+    errorMessage = sprintf('Error: The following folder does not exist:\n%s\nPlease specify a new folder.', myfolder);
+    uiwait(warndlg(errorMessage));
+    myFolder = uigetdir(); % Ask for a new one.
+    if myFolder == 0
+         % User clicked Cancel
+         return;
+    end
+
+end
+
+% Get a list of all files in the folder with the desired file name pattern.
+filePattern = fullfile(myfolder, '*.mat'); % Change to whatever pattern you need.
+theFiles = dir(filePattern);
+for k = 1 : length(theFiles)
+    baseFileName = theFiles(k).name;
+    fullFileName = fullfile(theFiles(k).folder, baseFileName);
+    fprintf(1, 'Now reading %s\n', fullFileName);
+data = load(fullFileName);
+A = struct2table(data);
+
+RR = A(1,4);
+RRR = table2array(RR);
+RR = RRR';
+
+onedata = RR(301:2100,1); %note that this is 1800 data points as it includes 301 and 2100
+twodata = RR(2101:3900,1);
+threedata = RR(3901:5700,1);
+fourdata = RR(5701:7500,1);
+fivedata = RR(7501:9300,1);
+sixdata = RR(9301:11100,1);
+alldata = RR(301:11100,1); %this is the data for all the 6 hours combined and analysed together
+
+
+M1 = median(onedata);
+M2 = median(twodata);
+M3 = median(threedata);
+M4 = median(fourdata);
+M5 = median(fivedata);
+M6 = median(sixdata);
+Mall = median(alldata);
+
+P1=zeros(1800,1);
+P2=zeros(1800,1);
+P3=zeros(1800,1);
+P4=zeros(1800,1);
+P5=zeros(1800,1);
+P6=zeros(1800,1);
+pall=zeros(10800,1);
+
+%for first hour of data the following cleans data and gives percentage
+%missing data for that hour, mHR, SDNN, cSDNN, SD1, SD2, SE)
+
+for i = 1:1800
+ 
+
+    if onedata(i,1) < 8 
+        onedata(i,1) = M1;
+        P1(i,1) = 1;
+        
+    else
+        onedata(i,1) = onedata(i,1);
+        P1(i,1)=0;
+       
+    end
+
+end
+
+for i = 1:1800
+ 
+
+    if twodata(i,1) < 8 
+        twodata(i,1) = M2;
+        P2(i,1) = 1;
+        
+    else
+        twodata(i,1) = twodata(i,1);
+        P2(i,1)=0;
+       
+    end
+
+end
+   
+for i = 1:1800
+ 
+
+    if threedata(i,1) < 8 
+        threedata(i,1) = M3;
+        P3(i,1) = 1;
+        
+    else
+        threedata(i,1) = threedata(i,1);
+        P3(i,1)=0;
+       
+    end
+
+end
+   
+for i = 1:1800
+ 
+
+    if fourdata(i,1) < 8 
+        fourdata(i,1) = M4;
+        P4(i,1) = 1;
+        
+    else
+        fourdata(i,1) = fourdata(i,1);
+        P4(i,1)=0;
+       
+    end
+
+end
+
+for i = 1:1800
+ 
+
+    if fivedata(i,1) < 8 
+        fivedata(i,1) = M5;
+        P5(i,1) = 1;
+        
+    else
+        fivedata(i,1) = fivedata(i,1);
+        P5(i,1)=0;
+       
+    end
+
+end
+
+for i = 1:1800
+ 
+
+    if sixdata(i,1) < 8 
+        sixdata(i,1) = M6;
+        P6(i,1) = 1;
+        
+    else
+        sixdata(i,1) = sixdata(i,1);
+        P6(i,1)=0;
+       
+    end
+
+end
+
+for i = 1:10800
+ 
+
+    if alldata(i,1) < 8 
+        alldata(i,1) = Mall;
+        pall(i,1) = 1;
+        
+    else
+        alldata(i,1) = alldata(i,1);
+        pall(i,1)=0;
+       
+    end
+
+end
+    
+
+Perc1=sum(P1)/1800;
+Perc2=sum(P2)/1800;
+Perc3=sum(P3)/1800;
+Perc4=sum(P4)/1800;
+Perc5=sum(P5)/1800;
+Perc6=sum(P6)/1800;
+Percall=sum(pall)/10800;
+
+meanPerc = [Perc1, Perc2, Perc3, Perc4, Perc5, Perc6];
+meanPerc = mean(meanPerc);
+
+mRR1 = mean(onedata);
+mRR2 = mean(twodata);
+mRR3 = mean(threedata);
+mRR4 = mean(fourdata);
+mRR5 = mean(fivedata);
+mRR6 = mean(sixdata);
+mRRall = mean(alldata);
+
+meanmRR = [mRR1, mRR2, mRR3, mRR4, mRR5, mRR6];
+meanmRR = mean(meanmRR);%meanRR of each hourly data)
+
+% conversion to RR (breath-breath) interval in milliseconds
+
+RRRR1 = 60000 ./ onedata;
+RRRR2 = 60000 ./ twodata;
+RRRR3 = 60000 ./ threedata;
+RRRR4 = 60000 ./ fourdata;
+RRRR5 = 60000 ./ fivedata;
+RRRR6 = 60000 ./ sixdata;
+RRRRall = 60000 ./ alldata;
+
+% SDNN
+SDNN1 = std(RRRR1);
+SDNN2 = std(RRRR2);
+SDNN3 = std(RRRR3);
+SDNN4 = std(RRRR4);
+SDNN5 = std(RRRR5);
+SDNN6 = std(RRRR6);
+SDNNall = std(RRRRall);
+
+meanSDNN = [SDNN1, SDNN2, SDNN3, SDNN4, SDNN5, SDNN6];
+meanSDNN = mean(meanSDNN); %mean of the hourly data
+
+
+% Poincare SD1 and Poincare SD2
+X1 = RRRR1(1:1800-1);
+Y1 = RRRR1(2:1800);
+
+SD11 = std((X1 - Y1)./sqrt(2));
+SD21 = std((X1 + Y1)./sqrt(2));
+
+X2 = RRRR2(1:1800-1);
+Y2 = RRRR2(2:1800);
+
+SD12 = std((X2 - Y2)./sqrt(2));
+SD22 = std((X2 + Y2)./sqrt(2));
+
+X3 = RRRR3(1:1800-1);
+Y3 = RRRR3(2:1800);
+
+SD13 = std((X3 - Y3)./sqrt(2));
+SD23 = std((X3 + Y3)./sqrt(2));
+
+X4 = RRRR4(1:1800-1);
+Y4 = RRRR4(2:1800);
+
+SD14 = std((X4 - Y4)./sqrt(2));
+SD24 = std((X4 + Y4)./sqrt(2));
+
+X5 = RRRR5(1:1800-1);
+Y5 = RRRR5(2:1800);
+
+SD15 = std((X5 - Y5)./sqrt(2));
+SD25 = std((X5 + Y5)./sqrt(2));
+
+X6 = RRRR6(1:1800-1);
+Y6 = RRRR6(2:1800);
+
+SD16 = std((X6 - Y6)./sqrt(2));
+SD26 = std((X6 + Y6)./sqrt(2));
+
+Xall = RRRRall(1:10800-1);
+Yall = RRRRall(2:10800);
+
+SD1all = std((Xall - Yall)./sqrt(2));
+SD2all = std((Xall + Yall)./sqrt(2));
+
+meanSD1 = [SD11, SD12, SD13, SD14, SD15, SD16];
+meanSD1 = mean(meanSD1); %mean for the hourly data
+
+meanSD2 = [SD21, SD22, SD23, SD24, SD25, SD26];
+meanSD2 = mean(meanSD2); %mean for the hourly data
+
+% Sample Entropy for m=2, r = 0.2
+
+SE1 = sampen(RRRR1,2,0.2);
+SE1 = SE1(2,1);
+
+SE2 = sampen(RRRR2,2,0.2);
+SE2 = SE2(2,1);
+
+SE3 = sampen(RRRR3,2,0.2);
+SE3 = SE3(2,1);
+
+SE4 = sampen(RRRR4,2,0.2);
+SE4 = SE4(2,1);
+
+SE5 = sampen(RRRR5,2,0.2);
+SE5 = SE5(2,1);
+
+SE6 = sampen(RRRR6,2,0.2);
+SE6 = SE6(2,1);
+
+SEall = sampen(RRRRall,2,0.2);
+SEall = SEall(2,1);
+
+meanSE = [SE1, SE2, SE3, SE4, SE5, SE6];
+meanSE = mean(meanSE); %mean of all
+
+Results(k,1) = Perc1;
+Results(k,2) = Perc2;
+Results(k,3) = Perc3;
+Results(k,4) = Perc4;
+Results(k,5) = Perc5;
+Results(k,6) = Perc6;
+Results(k,7) = meanPerc;
+Results(k,8) = mRR1;
+Results(k,9) = mRR2;
+Results(k,10) = mRR3;
+Results(k,11) = mRR4;
+Results(k,12) = mRR5;
+Results(k,13) = mRR6;
+Results(k,14) = meanmRR;
+Results(k,15) = SDNN1;
+Results(k,16) = SDNN2;
+Results(k,17) = SDNN3;
+Results(k,18) = SDNN4;
+Results(k,19) = SDNN5;
+Results(k,20) = SDNN6;
+Results(k,21) = meanSDNN;
+Results(k,22) = SD11;
+Results(k,23) = SD12;
+Results(k,24) = SD13;
+Results(k,25) = SD14;
+Results(k,26) = SD15;
+Results(k,27) = SD16;
+Results(k,28) = meanSD1;
+Results(k,29) = SD21;
+Results(k,30) = SD22;
+Results(k,31) = SD23;
+Results(k,32) = SD24;
+Results(k,33) = SD25;
+Results(k,34) = SD26;
+Results(k,35) = meanSD2;
+Results(k,36) = SE1;
+Results(k,37) = SE2;
+Results(k,38) = SE3;
+Results(k,39) = SE4;
+Results(k,40) = SE5;
+Results(k,41) = SE6;
+Results(k,42) = meanSE;
+Results(k,43) = Percall;
+Results(k,44) = mRRall;
+Results(k,45) = SDNNall;
+Results(k,46) = SD1all;
+Results(k,47) = SD2all;
+Results(k,48) = SEall;
+
+
+Table = array2table(Results);
+
+Table.Properties.VariableNames = ["Perc1", "Perc2", "Perc3", "Perc4", "Perc5", "Perc6", "meanhourlyPerc",...
+    "meanRR1", "meanRR2", "meanRR3", "meanRR4", "meanRR5", "meanRR6", "meanhourlyRR", ...
+    "SDNN1", "SDNN2", "SDNN3", "SDNN4", "SDNN5", "SDNN6", "meanhourlySDNN", ...
+    "SD11", "SD12", "SD13", "SD14", "SD15", "SD16", "meanhourlySD1",...
+    "SD21", "SD22", "SD23", "SD24", "SD25", "SD26", "meanhourlySD2",...
+    "SE1", "SE2", "SE3", "SE4", "SE5", "SE6", "meanhourlySE",...
+    "Percall","meanRRalldata", "SDNNalldata", "SD1alldata","SD2alldata", "SEalldata"];
+
+
+end
+
+writetable(Table,"RF01hourlyrr.xls")
+
+
