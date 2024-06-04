@@ -1,7 +1,36 @@
-% this is the code to analyse the first inpatient recording we have for the patient
+% this is the code to analyse the first recording we have for the patient
 % (nocturnal) in those we have data. 
 
-data = load("RF04_20201030_181026.mat")
+% Specify where the files live
+clear all
+close all
+clc
+Results = NaN(3,13);
+
+myfolder = "/MATLAB Drive/COPD-AcuPebble/COMPLETE DATA ANALYSIS/INPATIENTS/";
+if ~isfolder(myfolder)
+    errorMessage = sprintf('Error: The following folder does not exist:\n%s\nPlease specify a new folder.', myfolder);
+    uiwait(warndlg(errorMessage));
+    myFolder = uigetdir(); % Ask for a new one.
+    if myFolder == 0
+         % User clicked Cancel
+         return;
+    end
+
+end
+
+% Get a list of all files in the folder with the desired file name pattern.
+filePattern = fullfile(myfolder, '*.mat'); % Change to whatever pattern you need.
+theFiles = dir(filePattern);
+for k = 1 : length(theFiles)
+    baseFileName = theFiles(k).name;
+    fullFileName = fullfile(theFiles(k).folder, baseFileName);
+    fprintf(1, 'Now reading %s\n', fullFileName);
+data = load(fullFileName);
+
+
+% this is the code to analyse the first inopatient recording we have for the patient
+% (nocturnal) in those we have data. 
 
 DT = datetime(data.utcstart_datetime, 'InputFormat' ,'yyyyMMdd_HHmmss');
 date = datetime(DT, "format", "dd/MM/yyyy");
@@ -144,9 +173,7 @@ Table.Properties.VariableNames = ["% missing HR", "% missing RR", "mean Heart ra
 end
 
 
-writetable(Table,"RF04.xlsx")
-
-
+writetable(Table,"inpatient.xlsx")
 
 
 
