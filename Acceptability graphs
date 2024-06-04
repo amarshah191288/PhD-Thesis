@@ -1,0 +1,26 @@
+% graphs for acceptability work for stable COPD patients
+
+data = readtable("Acceptability in home patients.xlsx")
+
+easesensory = data.EasyOfAttachingSensor
+easeapp = data.EaseOfAttachingAp
+comfort = data.SensorComfort
+
+A = [easesensory easeapp]
+header = {"Ease of sensor attachment", "Easy of app attachment"}
+B = [comfort]
+header = {"How comfortable the sensor was"}
+
+bar(A.', "stacked")
+legend("very difficult", "difficult", "moderately easy", "easy", "very easy")
+legend("FontSize", 12)
+legend("location","northeastoutside")
+ylabel("number of responses", "FontSize", 12)
+xticklabels({"Ease of sensor attachment", "Ease of app attachment"})
+fontname("arial")
+
+bar(B.', "stacked")
+xticklabels({"very uncomfortable", "uncomfortable", "moderately comfortable", ...
+    "comfortable", "very comfortable"})
+ylabel("number of responses", "FontSize", 12)
+fontname("arial")
