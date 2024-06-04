@@ -1,0 +1,60 @@
+%Code to calculate the total duration of recordings for each night and
+%also the start time of the recording at night. Can then average the start
+%time for each person and then get an overall average start time to match
+%each inpatient
+
+clear all
+close all
+clc
+Results = NaN(4,2);
+
+myfolder = "/MATLAB Drive/COPD-AcuPebble/COMPLETE DATA ANALYSIS/HOME PATIENTS/RF01";
+if ~isfolder(myfolder)
+    errorMessage = sprintf('Error: The following folder does not exist:\n%s\nPlease specify a new folder.', myfolder);
+    uiwait(warndlg(errorMessage));
+    myFolder = uigetdir(); % Ask for a new one.
+    if myFolder == 0
+         % User clicked Cancel
+         return;
+    end
+
+end
+
+% Get a list of all files in the folder with the desired file name pattern.
+filePattern = fullfile(myfolder, '*.mat'); % Change to whatever pattern you need.
+theFiles = dir(filePattern);
+for k = 1 : length(theFiles)
+    baseFileName = theFiles(k).name;
+    fullFileName = fullfile(theFiles(k).folder, baseFileName);
+    fprintf(1, 'Now reading %s\n', fullFileName);
+data = load(fullFileName);
+A = struct2table(data);
+HR = A(1,1);
+HRR = table2array(HR);
+hr = HRR';
+
+hr = length(hr);
+hrtime = hr ./ 1800;
+
+RR = A(1,4);
+RRR = table2array(RR);
+rr = RRR';
+
+rr = length(rr);
+rrtime = rr ./ 1800;
+
+
+DT = datetime(data.utcstart_datetime, 'InputFormat' ,'yyyyMMdd_HHmmss');
+X = convertTo(DT,"excel"); % this is the date and time in number format for excel
+
+
+Results (k,1) = hrtime;
+Results (k,2) = rrtime;
+Results (k,3) = X;
+
+Table = array2table(Results, "VariableNames",["HR recording duration", "RR recording duration", ...
+    "Start time",]);
+end
+
+
+writetable(Table,"RF01timefinal.xls")
