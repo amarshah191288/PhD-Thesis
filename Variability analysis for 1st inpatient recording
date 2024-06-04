@@ -1,0 +1,156 @@
+% this is the code to analyse the first inpatient recording we have for the patient
+% (nocturnal) in those we have data. 
+
+data = load("RF04_20201030_181026.mat")
+
+DT = datetime(data.utcstart_datetime, 'InputFormat' ,'yyyyMMdd_HHmmss');
+date = datetime(DT, "format", "dd/MM/yyyy");
+
+HR = data.hr;
+HR = HR';
+RR = data.rr;
+RR = RR';
+
+t = datetime(DT,"Format","HH:mm:ss");
+
+% 
+TT = timetable(HR, RR, 'TimeStep',seconds(2),'StartTime',DT);
+
+average_time = datetime('22:39:33','InputFormat','HH:mm:ss');
+timeofday(average_time);
+start_datetime = date - timeofday(t) + timeofday(average_time);
+end_datetime = start_datetime + hours(6);
+S = timerange(start_datetime, end_datetime);
+selected_TT = TT(S,:);
+
+HR = selected_TT.HR; % this is the 6 hour data for HR for that time period
+RR = selected_TT.RR; % this is the 6 hour data for RR for that time period
+
+% this is for HR recordings
+
+medianHR = median(HR); % this is the median HR 
+
+p=zeros(10800,1);
+
+%The following cleans data and gives percentage of missing data - if >/-15%
+%the whole night was deleted and not used
+
+for i = 1:10800
+ 
+
+    if  HR(i,1) < 40 
+        HR(i,1) = medianHR;
+        p(i,1) = 1;
+        
+    else
+        HR(i,1) = HR(i,1);
+        p(i,1)=0;
+       
+    end
+
+end
+
+PercHR=sum(p)/10800;
+meanHR = mean(HR);
+
+% conversion of HR into R-R interval in milliseconds
+
+HRRR = 60000 ./ HR;
+
+SDNNHR = std(HRRR); %this is SDNN of R-R interval for HR
+cSDNNHR = SDNNHR / exp(-meanHR/58.8); % this is cSDNN of R-R interval for HR
+
+%poincare plot indices SD1 and SD2 for HR
+
+XHR = HRRR(1:10800-1);
+YHR = HRRR(2:10800);
+
+SD1HR = std((XHR - YHR)./sqrt(2));
+SD2HR = std((XHR + YHR)./sqrt(2));
+
+%sample entropy calculation with m = 2 and r = 0.2
+
+SEHR = sampen(HRRR,2,0.2);
+SEHR = SEHR(2,1);
+
+
+% this is for Resp rate data
+
+medianRR = median(RR); % this is the median RR 
+
+q=zeros(10800,1);
+
+for i = 1:10800
+ 
+
+    if  RR(i,1) < 8 
+        RR(i,1) = medianRR;
+        q(i,1) = 1;
+        
+    else
+        RR(i,1) = RR(i,1);
+        q(i,1)=0;
+       
+    end
+
+end
+
+PercRR=sum(q)/10800;
+meanRR = mean(RR); % the mean respiratory rate
+
+% conversion of RR into breath-to-breath (BB) interval in milliseconds
+
+RRBB = 60000 ./ RR;
+SDBBRR = std(RRBB); %this is SDNN of B-B interval for RR
+
+%poincare plot indices SD1 and SD2 for HR
+
+XRR = RRBB(1:10800-1);
+YRR = RRBB(2:10800);
+
+SD1BB = std((XRR - YRR)./sqrt(2));
+SD2BB = std((XRR + YRR)./sqrt(2));
+
+
+%sample entropy calculation with m = 2 and r = 0.2
+
+SEBB = sampen(RRBB,2,0.2);
+SEBB = SEBB(2,1);
+
+
+% this is to combine all the data together and put into one excel
+% spreadsheet
+
+Results(k,1) = PercHR;
+Results(k,2) = PercRR;
+Results(k,3) = meanHR;
+Results(k,4) = SDNNHR;
+Results(k,5) = cSDNNHR;
+Results(k,6) = SD1HR;
+Results(k,7) = SD2HR;
+Results(k,8) = SEHR;
+Results(k,9) = meanRR;
+Results(k,10) = SDBBRR;
+Results(k,11) = SD1BB;
+Results(k,12) = SD2BB;
+Results(k,13) = SEBB;
+
+Table = array2table(Results);
+
+Table.Properties.VariableNames = ["% missing HR", "% missing RR", "mean Heart rate", "SDNN Heart rate ", "cSDNN heart rate",...
+    "SD1 heart rate", "SD2 heart rate","SE heart rate", "mean resp rate",...
+    "SDBB resp rate", "SD1 resp rate", "SD2 resp rate","SE resp rate"];
+
+end
+
+
+writetable(Table,"RF04.xlsx")
+
+
+
+
+
+
+
+
+
