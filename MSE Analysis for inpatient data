@@ -1,0 +1,152 @@
+%this is the code used for multi-scale entropy analysis for the inpatient
+%recordings
+
+% Specify where the files live
+clear all
+close all
+clc
+Results = NaN(3,13);
+
+myfolder = "/MATLAB Drive/COPD-AcuPebble/COMPLETE DATA ANALYSIS/INPATIENTS/ONE NIGHT DATA";
+if ~isfolder(myfolder)
+    errorMessage = sprintf('Error: The following folder does not exist:\n%s\nPlease specify a new folder.', myfolder);
+    uiwait(warndlg(errorMessage));
+    myFolder = uigetdir(); % Ask for a new one.
+    if myFolder == 0
+         % User clicked Cancel
+         return;
+    end
+
+end
+
+% Get a list of all files in the folder with the desired file name pattern.
+filePattern = fullfile(myfolder, '*.mat'); % Change to whatever pattern you need.
+theFiles = dir(filePattern);
+for k = 1 : length(theFiles)
+    baseFileName = theFiles(k).name;
+    fullFileName = fullfile(theFiles(k).folder, baseFileName);
+    fprintf(1, 'Now reading %s\n', fullFileName);
+data = load(fullFileName);
+
+DT = datetime(data.utcstart_datetime, 'InputFormat' ,'yyyyMMdd_HHmmss');
+date = datetime(DT, "format", "dd/MM/yyyy");
+
+HR = data.hr;
+HR = HR';
+RR = data.rr;
+RR = RR';
+
+t = datetime(DT,"Format","HH:mm:ss");
+
+% 
+TT = timetable(HR, RR, 'TimeStep',seconds(2),'StartTime',DT);
+
+average_time = datetime('22:39:33','InputFormat','HH:mm:ss');
+timeofday(average_time);
+start_datetime = date - timeofday(t) + timeofday(average_time);
+end_datetime = start_datetime + hours(6);
+S = timerange(start_datetime, end_datetime);
+selected_TT = TT(S,:);
+
+HR = selected_TT.HR; % this is the 6 hour data for HR for that time period
+RR = selected_TT.RR; % this is the 6 hour data for HR for that time period
+
+
+%this part of the code is for HR
+
+
+medianHR = median(HR); % this is the median HR 
+
+p=zeros(10800,1);
+
+%The following cleans data and gives percentage of missing data - if >/-15%
+%the whole night was deleted and not used
+
+for i = 1:10800
+ 
+
+    if  HR(i,1) < 40 
+        HR(i,1) = medianHR;
+        p(i,1) = 1;
+        
+    else
+        HR(i,1) = HR(i,1);
+        p(i,1)=0;
+       
+    end
+
+end
+
+PercHR=sum(p)/10800;
+
+HRR = 60000 ./ HR;
+
+[HRMSE,scale] = msentropy(HRR,[],[],[],[],[],[],[],10, 0.2, 0.2);
+
+HRMSE = HRMSE';
+
+
+
+
+medianRR = median(RR); % this is the median RR 
+
+q=zeros(10800,1);
+
+for i = 1:10800
+ 
+
+    if  RR(i,1) < 8 
+        RR(i,1) = medianRR;
+        q(i,1) = 1;
+        
+    else
+        RR(i,1) = RR(i,1);
+        q(i,1)=0;
+       
+    end
+
+end
+
+PercRR=sum(q)/10800;
+RRBB = 60000 ./ RR;
+
+[RRMSE,scale] = msentropy(RRBB,[],[],[],[],[],[],[],10, 0.2, 0.2);
+
+RRMSE = RRMSE';
+
+MSE = [HRMSE,RRMSE];
+
+Results(k,1) = MSE(1,1);
+Results(k,2) = MSE (1,2);
+Results(k,3) = MSE (1,3);
+Results(k,4) = MSE (1,4);
+Results(k,5) = MSE (1,5);
+Results(k,6) = MSE (1,6);
+Results(k,7) = MSE (1,7);
+Results(k,8) = MSE (1,8);
+Results(k,9) = MSE (1,9);
+Results(k,10) = MSE (1,10);
+Results(k,11) = MSE(1,11);
+Results(k,12) = MSE (1,12);
+Results(k,13) = MSE (1,13);
+Results(k,14) = MSE (1,14);
+Results(k,15) = MSE (1,15);
+Results(k,16) = MSE (1,16);
+Results(k,17) = MSE (1,17);
+Results(k,18) = MSE (1,18);
+Results(k,19) = MSE (1,19);
+Results(k,20) = MSE (1,20);
+Results (k,21) = PercHR;
+Results (k,22) = PercRR;
+
+table = array2table(Results);
+
+table.Properties.VariableNames = ["HRSE1", "HRSE2", "HRSE3", "HRSE4 ", "HRSE5",...
+    "HRSE6", "HRSE7","HRSE8", "HRSE9",...
+    "HRSE10", "RRSE1", "RRSE2","RRSE3", "RRSE4", "RRSE5", "RRSE6", "RRSE7", "RRSE8", "RRSE9",...
+    "RRSE10", "missing HR", "missing RR"];
+
+end
+
+writetable(table,"MSEINPT.xls")
+
