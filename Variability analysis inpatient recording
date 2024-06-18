@@ -1,4 +1,4 @@
-% this is the code to analyse the first recording we have for the patient
+% this is the code to analyse the inpatient recordings (1st recording, recording prior to discharge and also recordings obtained at day 5 and thereafter where available)
 % (nocturnal) in those we have data. 
 
 % Specify where the files live
