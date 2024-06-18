@@ -1,0 +1,145 @@
+%this is a code to find the graph (ln,lf) and then from this gragh, find
+%the slope for each of the segments
+%below is for 6 hours of inpatient data from the median time point of home patients
+% removal of zeros over 30 seconds (3000
+%datapoints long)
+% the code below allows all the data files to compute three numbes
+%  alpha 1, alpha 2 and alpha 3
+% this code was used for all inpatient analysis work (day 1, discharge and the prolonged work)
+
+% Specify where the files live
+clear all
+close all
+clc
+Results = NaN(6,4);
+
+myfolder = "F:\COPD ANALYSIS FOR THESIS\AIRFLOW DATA\INPATIENT";
+if ~isfolder(myfolder)
+    errorMessage = sprintf('Error: The following folder does not exist:\n%s\nPlease specify a new folder.', myfolder);
+    uiwait(warndlg(errorMessage));
+    myFolder = uigetdir(); % Ask for a new one.
+    if myFolder == 0
+         % User clicked Cancel
+         return;
+    end
+
+end
+
+% Get a list of all files in the folder with the desired file name pattern.
+filePattern = fullfile(myfolder, '*.mat'); % Change to whatever pattern you need.
+theFiles = dir(filePattern);
+for k = 1 : length(theFiles)
+    baseFileName = theFiles(k).name;
+    fullFileName = fullfile(theFiles(k).folder, baseFileName);
+    fprintf(1, 'Now reading %s\n', fullFileName);
+data = load(fullFileName);
+% data = load("RF39_20220501_224045_acuflow.mat");
+
+
+DT = datetime(data.utcstart_datetime, 'InputFormat' ,'yyyyMMdd_HHmmss');
+date = datetime(DT, "format", "dd/MM/yyyy");
+A = data.acuflow;
+A = A';
+% Adata = A(60000:2220000,1);
+
+t = datetime(DT,"Format","HH:mm:ss");
+
+% 
+TT = timetable(A, 'TimeStep',seconds(0.1),'StartTime',DT);
+
+average_time = datetime('22:39:33','InputFormat','HH:mm:ss');
+timeofday(average_time);
+start_datetime = date - timeofday(t) + timeofday(average_time);
+end_datetime = start_datetime + hours(6);
+S = timerange(start_datetime, end_datetime);
+selected_TT = TT(S,:);
+
+Adata = selected_TT.A;
+
+
+N = 3000; % for example if we only want to flag zeros train longer than N
+%%%%% Flag if data have more than n consecutive zeros %%%%%%%%%%%%%%%%%
+% initialise flag with zeros
+zeros_flag = zeros(size(Adata));
+
+% find where datapoints are zero
+z = Adata == 0;
+
+% get the diff of z to mark start and end point of zero trains
+diffz = diff(z);
+start_0 = find(diffz == 1) + 1; % start of zero trains in data
+stop_0 = find(diffz == -1); % end of zero trains in data
+if start_0(1) > stop_0(1)
+    start_0 = [1; start_0]; % This is to account for if data starts with 0
+end
+if stop_0(end) < start_0(end)
+    stop_0 = [stop_0; length(Adata)]; % This is to account for if data ends with 0
+end
+
+% for each zero trains, raise flag only if longer than N
+for i = 1:length(start_0)
+    if stop_0(i) - start_0(i) + 1 >= N % check if longer than N
+        % raise flag if longer than N
+        zeros_flag(start_0(i):stop_0(i)) = 1;
+    end
+end
+
+pct = 100*sum(zeros_flag)/length(zeros_flag)
+
+Adata_zero_removed = Adata(zeros_flag == 0);
+[ln,lf]=dfa(Adata_zero_removed);
+% scatter(ln,lf)
+% xline([2.52114,4.02629], "--r")
+
+% xlabel("Log_{10}(n)")
+% ylabel("Log_{10}F(n)")
+% length (ln)
+
+% % the next bit has been done by eye...
+
+row = find(ln == 2.52114);
+D = row;
+
+alpha1ln = ln(1:D,1);
+alpha1lf = lf(1:D,1);
+% scatter(alpha1ln,alpha1lf);
+
+alpha1 = polyfit(alpha1ln,alpha1lf,1);
+alpha1 = alpha1(1);
+
+row2 = find(ln == 3.49941);
+E = row2;
+
+alpha2ln = ln((D+1):E,1);
+alpha2lf = lf((D+1):E,1);
+
+% alpha2ln = ln((D+1):end,1);
+% alpha2lf = lf((D+1):end,1);
+% scatter(alpha2ln,alpha2lf)
+
+alpha2 = polyfit(alpha2ln,alpha2lf,1);
+alpha2 = alpha2(1)
+
+
+alpha3ln = ln(E:end,1);
+alpha3lf = lf(E:end,1);
+% scatter(alpha3ln,alpha3lf)
+
+alpha3 = polyfit(alpha3ln,alpha3lf,1);
+alpha3 = alpha3(1);
+
+% k=1
+Results(k,1) = pct;
+Results(k,2) = alpha1;
+Results(k,3) = alpha2;
+Results(k,4) = alpha3;
+Results(k,5) = D;
+Results(k,6) = E;
+
+Table = array2table(Results);
+
+Table.Properties.VariableNames = ["% airflow missing", "Alpha1", "Alpha2", "Alpha3", "Row 1", "Row2"];
+
+end
+
+writetable(Table,"RF41 airflow final.xlsx")
