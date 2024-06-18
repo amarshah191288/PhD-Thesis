@@ -1,0 +1,30 @@
+% function to make graph for MSE work comparing healthy vs. stable COPD vs. exacerbating COPD
+
+data = readtable("RRMSE for graph stable, exacerbating and healthy.xlsx")
+
+Scale = data.Scale;
+sCOPD = data.StableCOPD;
+serror = data.SE;
+eCOPD = data.ExacerbatingCOPD;
+eerror = data.SE_1;
+healthy = data.Normal;
+herror = data.SE_2
+
+
+errorbar(Scale,sCOPD,serror, "bl-o")
+
+hold on
+
+errorbar(Scale,eCOPD,eerror, "r-o")
+
+hold on
+
+errorbar(Scale,healthy,herror,"k--o")
+
+xlim([0 11])
+ylim([0 0.5])
+xlabel("Scale Factor", "FontSize",12)
+ylabel("Sample Entropy", "FontSize",12)
+legend("Stable", "Exacerbating", "Healthy")
+legend("FontSize",12)
+
