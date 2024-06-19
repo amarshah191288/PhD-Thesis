@@ -2,85 +2,236 @@
 % data required and then calculate the values (meanHR, SDNN, cSDNN,
 % SD1,SD2,SE)
 
-%edf files are obtained from the original limited channel polysomnographies (sleep studies) which are converted to csv files and the HR data extracted in it's orginal form and original resolution
+% the limited channel sleep study data is extracted as an edf file. the HR is at 3Hz resolution and so the below code calculates at 3Hz (original) resolution and then also at 1Hz and 0.5Hz on 6 hour data. 
+
+%Have initially done the reading at 3hz as normal then changed frequency to
+%1Hz and 0.5Hz on the 6 hour data only. I have filtered all the data from
+%beginning so only take the initial  missing % data and that data we will
+%have to delete. 
 clear all
 close all
 clc
 
-time = "2018-11-02 22:00"
-DT = datetime(t, 'InputFormat',"yyyy-MM-dd HH:mm:ss")
+time = "2018-11-02 20:55:00";
+DT = datetime(time, 'InputFormat',"yyyy-MM-dd HH:mm:ss");
+date = datetime(DT, "format", "dd/MM/uuuu");
 
-data=edfread('AP021.edf')
+data=edfread('AP186.edf')
 A = table2array(data);
 
 HR=A(:,3);
-HR = cell2mat(HR);
-plot(HR)
+HR = cell2mat(HR); %at 3Hz frequency
+
 
 t = datetime(DT,"Format","HH:mm:ss");
-TT = timetable(HR, RR, 'TimeStep',seconds(1/3),'StartTime',DT);
+TT = timetable(HR, 'TimeStep',seconds(1/3),'StartTime',DT);
+
+average_time = datetime('23:32:00','InputFormat','HH:mm:ss');
+timeofday(average_time);
+start_datetime = date - timeofday(t) + timeofday(average_time);
+end_datetime = start_datetime + hours(6);
+S = timerange(start_datetime, end_datetime);
+selected_TT = TT(S,:)
 
 
-HR = HR(21601:86400); % this is exactly 6 hours worth of data (same as pebble data) missing first
-% 10 minutes and then 6 hours from there.
-% I have not filtered the data - so 3 data points every second (3Hz)
+HR1 = selected_TT.HR;
 
-medianHR = median(HR);
-Q=zeros(64800,1);
+medianHR1 = median(HR1); % this is the median HR 
 
+p=zeros(64800,1);
+
+%The following cleans data and gives percentage of missing data - if >/-15%
+%the whole night was deleted and not used
 
 for i = 1:64800
  
 
-    if  HR(i,1) < 40 
-        HR(i,1) = medianHR;
-        Q(i,1) = 1;
+    if  HR1(i,1) < 40 
+        HR1(i,1) = medianHR1;
+        p(i,1) = 1;
         
     else
-        HR(i,1) = HR(i,1);
-        Q(i,1)=0;
+        HR1(i,1) = HR1(i,1);
+        p(i,1)=0;
        
     end
 
 end
 
-PercHR=sum(Q)/21600
-plot(HR)
-meanHR = mean(HR);
+PercHR1=sum(p)/64800;
+meanHR1 = mean(HR1);
 
 % conversion of HR into R-R interval in milliseconds
 
-HRRR = 60000 ./ HR;
+HRRR1 = 60000 ./ HR1;
 
-SDNNHR = std(HRRR); %this is SDNN of R-R interval for HR
-cSDNNHR = SDNNHR / exp(-meanHR/58.8); % this is cSDNN of R-R interval for HR
+SDNNHR1 = std(HRRR1); %this is SDNN of R-R interval for HR
+cSDNNHR1 = SDNNHR1 / exp(-meanHR1/58.8); % this is cSDNN of R-R interval for HR
 
 %poincare plot indices SD1 and SD2 for HR
 
-XHR = HRRR(1:10800-1);
-YHR = HRRR(2:10800);
+XHR1 = HRRR1(1:64800-1);
+YHR1 = HRRR1(2:64800);
 
-SD1HR = std((XHR - YHR)./sqrt(2));
-SD2HR = std((XHR + YHR)./sqrt(2));
+SD1HR1 = std((XHR1 - YHR1)./sqrt(2));
+SD2HR1 = std((XHR1 + YHR1)./sqrt(2));
 
 %sample entropy calculation with m = 2 and r = 0.2
 
-SEHR = sampen(HRRR,2,0.2);
-SEHR = SEHR(2,1);
+SEHR1 = sampen(HRRR1,2,0.2);
+SEHR1 = SEHR1(2,1);
 
-Results(1,1) = PercHR;
-Results(1,2) = meanHR;
-Results(1,3) = SDNNHR;
-Results(1,4) = cSDNNHR;
-Results(1,5) = SD1HR;
-Results(1,6) = SD2HR;
-Results(1,7) = SEHR;
+
+%this is the same as above but for filtered data - i.e, to 1Hz
+
+% resampling to 1 Hz
+% HR
+n=length(HR1);
+nn=floor(n/3);
+newHR=NaN(nn,1);
+
+for i=1:nn
+    newHR(i,1)=(HR1(i*3-2,1)+HR1(i*3-1,1)+HR1(i*3,1))/3;
+end
+
+medianHR2 = median(newHR); % this is the median HR 
+
+q=zeros(21600,1);
+
+%The following cleans data and gives percentage of missing data - if >/-15%
+%the whole night was deleted and not used
+
+for i = 1:21600
+ 
+
+    if  newHR(i,1) < 40 
+        newHR(i,1) = medianHR2;
+        q(i,1) = 1;
+        
+    else
+        newHR(i,1) = newHR(i,1);
+        q(i,1)=0;
+       
+    end
+
+end
+
+PercHR2=sum(q)/21600;
+meanHR2 = mean(newHR);
+
+% conversion of HR into R-R interval in milliseconds
+
+HRRR2 = 60000 ./ newHR;
+
+SDNNHR2 = std(HRRR2); %this is SDNN of R-R interval for HR
+cSDNNHR2 = SDNNHR2 / exp(-meanHR2/58.8); % this is cSDNN of R-R interval for HR
+
+%poincare plot indices SD1 and SD2 for HR
+
+XHR2 = HRRR2(1:21600-1);
+YHR2 = HRRR2(2:21600);
+
+SD1HR2 = std((XHR2 - YHR2)./sqrt(2));
+SD2HR2 = std((XHR2 + YHR2)./sqrt(2));
+
+%sample entropy calculation with m = 2 and r = 0.2
+
+SEHR2 = sampen(HRRR2,2,0.2);
+SEHR2 = SEHR2(2,1);
+
+
+
+
+%this is the same as above but for filtered data - i.e, to 1Hz
+
+% resampling to 0.5 Hz - same frequency as Pebble data
+% HR
+n=length(HR1);
+nn=floor(n/6);
+newHR1=NaN(nn,1);
+
+for i=1:nn
+    newHR1(i,1)=(HR1(i*6-5,1)+HR1(i*6-4,1)+HR1(i*6-3,1)+HR1(i*6-2,1) ...
+        +HR1(i*6-1,1)+HR1(i*6,1))/6;
+end
+
+medianHR3 = median(newHR1); % this is the median HR 
+
+r=zeros(10800,1);
+
+%The following cleans data and gives percentage of missing data - if >/-15%
+%the whole night was deleted and not used
+
+for i = 1:10800
+ 
+
+    if  newHR1(i,1) < 40 
+        newHR1(i,1) = medianHR3;
+        r(i,1) = 1;
+        
+    else
+        newHR1(i,1) = newHR1(i,1);
+        r(i,1)=0;
+       
+    end
+
+end
+
+PercHR3=sum(r)/10800;
+meanHR3 = mean(newHR1);
+
+% conversion of HR into R-R interval in milliseconds
+
+HRRR3 = 60000 ./ newHR1;
+
+SDNNHR3 = std(HRRR3); %this is SDNN of R-R interval for HR
+cSDNNHR3 = SDNNHR3 / exp(-meanHR2/58.8); % this is cSDNN of R-R interval for HR
+
+%poincare plot indices SD1 and SD2 for HR
+
+XHR3 = HRRR3(1:10800-1);
+YHR3 = HRRR3(2:10800);
+
+SD1HR3 = std((XHR3 - YHR3)./sqrt(2));
+SD2HR3 = std((XHR3 + YHR3)./sqrt(2));
+
+%sample entropy calculation with m = 2 and r = 0.2
+
+SEHR3 = sampen(HRRR3,2,0.2);
+SEHR3 = SEHR3(2,1);
+
+
+Results(1,1) = PercHR1;
+Results(1,2) = meanHR1;
+Results(1,3) = SDNNHR1;
+Results(1,4) = cSDNNHR1;
+Results(1,5) = SD1HR1;
+Results(1,6) = SD2HR1;
+Results(1,7) = SEHR1;
+Results(1,8) = PercHR2;
+Results(1,9) = meanHR2;
+Results(1,10) = SDNNHR2;
+Results(1,11) = cSDNNHR2;
+Results(1,12) = SD1HR2;
+Results(1,13) = SD2HR2;
+Results(1,14) = SEHR2;
+Results(1,15) = PercHR3;
+Results(1,16) = meanHR3;
+Results(1,17) = SDNNHR3;
+Results(1,18) = cSDNNHR3;
+Results(1,19) = SD1HR3;
+Results(1,20) = SD2HR3;
+Results(1,21) = SEHR3;
+
 
 table = array2table(Results);
 
 table.Properties.VariableNames = ["% missing HR", "mean Heart rate", "SDNN Heart rate ", "cSDNN heart rate",...
-    "SD1 heart rate", "SD2 heart rate","SE heart rate"];
+    "SD1 heart rate", "SD2 heart rate","SE heart rate", "% missing HR filtered1 ",...
+    "mean Heart rate filtered1", "SDNN Heart rate filtered1", "cSDNN heart rate filtered1",...
+    "SD1 heart rate filtered1", "SD2 heart rate filtered1","SE heart rate filtered1",...
+    "% missing HR filtered2 ", "mean Heart rate filtered2", "SDNN Heart rate filtered2",...
+    "cSDNN heart rate filtered2",...
+    "SD1 heart rate filtered2", "SD2 heart rate filtered2","SE heart rate filtered2"];
 
-
-
-writetable(table,"AP022(2).xls")
+writetable(table,"AP186embletta.xlsx")
