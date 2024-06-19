@@ -1,0 +1,86 @@
+% code to extract the edf files to csv files so we can use them to download
+% data required and then calculate the values (meanHR, SDNN, cSDNN,
+% SD1,SD2,SE)
+
+%edf files are obtained from the original limited channel polysomnographies (sleep studies) which are converted to csv files and the HR data extracted in it's orginal form and original resolution
+clear all
+close all
+clc
+
+time = "2018-11-02 22:00"
+DT = datetime(t, 'InputFormat',"yyyy-MM-dd HH:mm:ss")
+
+data=edfread('AP021.edf')
+A = table2array(data);
+
+HR=A(:,3);
+HR = cell2mat(HR);
+plot(HR)
+
+t = datetime(DT,"Format","HH:mm:ss");
+TT = timetable(HR, RR, 'TimeStep',seconds(1/3),'StartTime',DT);
+
+
+HR = HR(21601:86400); % this is exactly 6 hours worth of data (same as pebble data) missing first
+% 10 minutes and then 6 hours from there.
+% I have not filtered the data - so 3 data points every second (3Hz)
+
+medianHR = median(HR);
+Q=zeros(64800,1);
+
+
+for i = 1:64800
+ 
+
+    if  HR(i,1) < 40 
+        HR(i,1) = medianHR;
+        Q(i,1) = 1;
+        
+    else
+        HR(i,1) = HR(i,1);
+        Q(i,1)=0;
+       
+    end
+
+end
+
+PercHR=sum(Q)/21600
+plot(HR)
+meanHR = mean(HR);
+
+% conversion of HR into R-R interval in milliseconds
+
+HRRR = 60000 ./ HR;
+
+SDNNHR = std(HRRR); %this is SDNN of R-R interval for HR
+cSDNNHR = SDNNHR / exp(-meanHR/58.8); % this is cSDNN of R-R interval for HR
+
+%poincare plot indices SD1 and SD2 for HR
+
+XHR = HRRR(1:10800-1);
+YHR = HRRR(2:10800);
+
+SD1HR = std((XHR - YHR)./sqrt(2));
+SD2HR = std((XHR + YHR)./sqrt(2));
+
+%sample entropy calculation with m = 2 and r = 0.2
+
+SEHR = sampen(HRRR,2,0.2);
+SEHR = SEHR(2,1);
+
+Results(1,1) = PercHR;
+Results(1,2) = meanHR;
+Results(1,3) = SDNNHR;
+Results(1,4) = cSDNNHR;
+Results(1,5) = SD1HR;
+Results(1,6) = SD2HR;
+Results(1,7) = SEHR;
+
+table = array2table(Results);
+
+table.Properties.VariableNames = ["% missing HR", "mean Heart rate", "SDNN Heart rate ", "cSDNN heart rate",...
+    "SD1 heart rate", "SD2 heart rate","SE heart rate"];
+
+
+
+writetable(table,"AP022(2).xls")
