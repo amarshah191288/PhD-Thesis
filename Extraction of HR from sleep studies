@@ -12,7 +12,7 @@ clear all
 close all
 clc
 
-time = "2018-11-02 20:55:00";
+time = "2018-11-02 20:55:00"; % this is the date and start time of the study
 DT = datetime(time, 'InputFormat',"yyyy-MM-dd HH:mm:ss");
 date = datetime(DT, "format", "dd/MM/uuuu");
 
