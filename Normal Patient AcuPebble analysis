@@ -11,7 +11,7 @@ close all
 clc
 Results = NaN(3,13);
 
-myfolder = "/MATLAB Drive/COPD-AcuPebble/COMPLETE DATA ANALYSIS/HOME PATIENTS/RF01";
+myfolder = "/MATLAB Drive/COPD-AcuPebble/COMPLETE DATA ANALYSIS/NORMAL";
 if ~isfolder(myfolder)
     errorMessage = sprintf('Error: The following folder does not exist:\n%s\nPlease specify a new folder.', myfolder);
     uiwait(warndlg(errorMessage));
